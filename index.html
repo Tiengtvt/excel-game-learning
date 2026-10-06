@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thử Thách Hàm Excel Cơ Bản</title>
+    <!-- Nhúng Tailwind CSS để thiết kế giao diện -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            background-image: radial-gradient(#bbf7d0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Ẩn các màn hình không hoạt động */
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hiệu ứng kéo thả */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone { border: 2px dashed #22c55e; transition: all 0.3s; }
+        .dropzone.dragover { background-color: #dcfce7; border-color: #16a34a; transform: scale(1.02); }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+        }
+
+        /* Tùy chỉnh input điền khuyết */
+        .input-blank {
+            border: none;
+            border-bottom: 2px solid #22c55e;
+            background: transparent;
+            text-align: center;
+            font-weight: bold;
+            color: #166534;
+            outline: none;
+            width: 120px;
+            transition: border-color 0.3s;
+        }
+        .input-blank:focus { border-bottom-color: #15803d; }
+        .input-blank.correct { border-bottom-color: #22c55e; color: #16a34a; background: #dcfce7; border-radius: 4px; }
+        .input-blank.wrong { border-bottom-color: #ef4444; color: #dc2626; background: #fee2e2; border-radius: 4px; }
+
+        /* Tùy chỉnh lựa chọn trắc nghiệm */
+        .quiz-option {
+            transition: all 0.2s;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+        }
+        .quiz-option:hover { border-color: #22c55e; background-color: #f0fdf4; }
+        .quiz-option.selected { border-color: #22c55e; background-color: #dcfce7; font-weight: 600; }
+        .quiz-option.correct-ans { border-color: #22c55e; background-color: #bbf7d0; color: #166534; }
+        .quiz-option.wrong-ans { border-color: #ef4444; background-color: #fecaca; color: #991b1b; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Container chính -->
+    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-4xl w-full relative">
+        
+        <!-- Header: Hiển thị điểm số -->
+        <div id="header" class="hidden bg-green-600 text-white p-4 flex justify-between items-center">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <span>📊</span> Excel Master
+            </h2>
+            <div class="bg-green-800 px-4 py-1 rounded-full font-bold text-lg">
+                Điểm: <span id="score-display">0</span>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <!-- MÀN HÌNH BẮT ĐẦU -->
+            <div id="screen-start" class="screen active text-center py-10">
+                <div class="text-7xl mb-4">📗</div>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-green-700 mb-4">Thử Thách Hàm Excel</h1>
+                <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">Vừa chơi vừa học! Vượt qua 3 thử thách để chứng tỏ bạn là bậc thầy Excel cơ bản.</p>
+                <div class="space-y-4 mb-8 text-left max-w-sm mx-auto bg-green-50 p-6 rounded-xl border border-green-200">
+                    <p class="font-bold text-green-800">Các phần chơi:</p>
+                    <ul class="list-disc pl-5 text-green-700 space-y-2">
+                        <li>Kéo thả nối hàm (25 điểm)</li>
+                        <li>Điền khuyết công thức (30 điểm)</li>
+                        <li>Trắc nghiệm tình huống (45 điểm)</li>
+                    </ul>
+                </div>
+                <button onclick="startGame()" class="btn-primary text-white text-xl font-bold py-3 px-10 rounded-full shadow-lg">
+                    Bắt đầu chơi ngay! 🚀
+                </button>
+            </div>
+
+            <!-- GAME 1: KÉO THẢ (DRAG AND DROP) -->
+            <div id="screen-game1" class="screen">
+                <div class="text-center mb-6">
+                    <span class="inline-block bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full text-sm mb-2">Thử thách 1 / 3</span>
+                    <h2 class="text-3xl font-bold text-gray-800">Kéo Thả Ghép Nối</h2>
+                    <p class="text-gray-500 mt-2">Kéo tên hàm ở cột trái thả vào chức năng tương ứng ở cột phải. (Hoặc bấm chọn bên trái rồi chọn bên phải nếu dùng điện thoại).</p>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-8 mt-8">
+                    <!-- Nguồn kéo (Tên hàm) -->
+                    <div class="flex-1 flex flex-col gap-4" id="drag-sources">
+                        <div class="draggable bg-blue-100 border-2 border-blue-400 text-blue-800 font-bold p-4 rounded-xl shadow-sm text-center text-xl select-none" draggable="true" data-func="SUM">SUM</div>
+                        <div class="draggable bg-purple-100 border-2 border-purple-400 text-purple-800 font-bold p-4 rounded-xl shadow-sm text-center text-xl select-none" draggable="true" data-func="VLOOKUP">VLOOKUP</div>
+                        <div class="draggable bg-yellow-100 border-2 border-yellow-400 text-yellow-800 font-bold p-4 rounded-xl shadow-sm text-center text-xl select-none" draggable="true" data-func="MAX">MAX</div>
+                        <div class="draggable bg-pink-100 border-2 border-pink-400 text-pink-800 font-bold p-4 rounded-xl shadow-sm text-center text-xl select-none" draggable="true" data-func="IF">IF</div>
+                        <div class="draggable bg-orange-100 border-2 border-orange-400 text-orange-800 font-bold p-4 rounded-xl shadow-sm text-center text-xl select-none" draggable="true" data-func="AVERAGE">AVERAGE</div>
+                    </div>
+
+                    <!-- Đích thả (Chức năng) -->
+                    <div class="flex-1 flex flex-col gap-4" id="drop-targets">
+                        <div class="dropzone p-4 rounded-xl bg-gray-50 flex items-center justify-between" data-target="AVERAGE">
+                            <span class="text-gray-700 font-medium w-2/3">Tính trung bình cộng của một vùng dữ liệu.</span>
+                            <div class="slot w-24 h-10 border-2 border-dashed border-gray-300 rounded bg-white flex items-center justify-center"></div>
+                        </div>
+                        <div class="dropzone p-4 rounded-xl bg-gray-50 flex items-center justify-between" data-target="IF">
+                            <span class="text-gray-700 font-medium w-2/3">Hàm điều kiện, trả về kết quả dựa trên biểu thức logic (Đúng/Sai).</span>
+                            <div class="slot w-24 h-10 border-2 border-dashed border-gray-300 rounded bg-white flex items-center justify-center"></div>
+                        </div>
+                        <div class="dropzone p-4 rounded-xl bg-gray-50 flex items-center justify-between" data-target="SUM">
+                            <span class="text-gray-700 font-medium w-2/3">Tính tổng các giá trị trong một phạm vi.</span>
+                            <div class="slot w-24 h-10 border-2 border-dashed border-gray-300 rounded bg-white flex items-center justify-center"></div>
+                        </div>
+                        <div class="dropzone p-4 rounded-xl bg-gray-50 flex items-center justify-between" data-target="MAX">
+                            <span class="text-gray-700 font-medium w-2/3">Tìm giá trị lớn nhất trong danh sách.</span>
+                            <div class="slot w-24 h-10 border-2 border-dashed border-gray-300 rounded bg-white flex items-center justify-center"></div>
+                        </div>
+                        <div class="dropzone p-4 rounded-xl bg-gray-50 flex items-center justify-between" data-target="VLOOKUP">
+                            <span class="text-gray-700 font-medium w-2/3">Tìm kiếm dữ liệu theo cột dọc trong bảng.</span>
+                            <div class="slot w-24 h-10 border-2 border-dashed border-gray-300 rounded bg-white flex items-center justify-center"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <p id="game1-feedback" class="text-lg font-bold mb-4 h-6 text-red-500"></p>
+                    <button onclick="checkGame1()" class="btn-primary text-white font-bold py-2 px-8 rounded-lg shadow">Xác nhận & Đi tiếp</button>
+                </div>
+            </div>
+
+            <!-- GAME 2: ĐIỀN KHUYẾT (FILL IN THE BLANKS) -->
+            <div id="screen-game2" class="screen">
+                <div class="text-center mb-6">
+                    <span class="inline-block bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full text-sm mb-2">Thử thách 2 / 3</span>
+                    <h2 class="text-3xl font-bold text-gray-800">Hoàn Thành Công Thức</h2>
+                    <p class="text-gray-500 mt-2">Gõ tên hàm (bằng tiếng Anh, viết hoa/thường đều được) hoặc tham số còn thiếu vào chỗ trống để hoàn thành bài toán.</p>
+                </div>
+
+                <div class="space-y-6 mt-8">
+                    <!-- Câu 1 -->
+                    <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                        <p class="font-medium text-gray-800 mb-3"><strong>Tình huống 1:</strong> Bạn muốn đếm xem có bao nhiêu học sinh đạt điểm 10 trong danh sách từ ô A1 đến A20.</p>
+                        <div class="font-mono text-lg bg-white inline-block px-4 py-2 rounded shadow-inner">
+                            =<input type="text" class="input-blank mx-1 uppercase" id="blank1" autocomplete="off">(A1:A20, 10)
+                        </div>
+                    </div>
+
+                    <!-- Câu 2 -->
+                    <div class="bg-yellow-50 p-6 rounded-xl border border-yellow-100">
+                        <p class="font-medium text-gray-800 mb-3"><strong>Tình huống 2:</strong> Tìm điểm số thấp nhất của học sinh trong cột B từ B2 đến B30.</p>
+                        <div class="font-mono text-lg bg-white inline-block px-4 py-2 rounded shadow-inner">
+                            =<input type="text" class="input-blank mx-1 uppercase" id="blank2" autocomplete="off">(B2:B30)
+                        </div>
+                    </div>
+
+                    <!-- Câu 3 -->
+                    <div class="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                        <p class="font-medium text-gray-800 mb-3"><strong>Tình huống 3:</strong> Trả về chữ "Đỗ" nếu điểm ở ô C2 >= 5, ngược lại trả về "Trượt".</p>
+                        <div class="font-mono text-lg bg-white inline-block px-4 py-2 rounded shadow-inner">
+                            =IF(C2>=5, "<input type="text" class="input-blank mx-1" id="blank3" autocomplete="off">", "Trượt")
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <p id="game2-feedback" class="text-lg font-bold mb-4 h-6 text-red-500"></p>
+                    <button onclick="checkGame2()" class="btn-primary text-white font-bold py-2 px-8 rounded-lg shadow">Xác nhận & Đi tiếp</button>
+                </div>
+            </div>
+
+            <!-- GAME 3: TRẮC NGHIỆM (QUIZ) -->
+            <div id="screen-game3" class="screen">
+                <div class="text-center mb-6">
+                    <span class="inline-block bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full text-sm mb-2">Thử thách 3 / 3</span>
+                    <h2 class="text-3xl font-bold text-gray-800">Trắc Nghiệm Tình Huống</h2>
+                    <p class="text-gray-500 mt-2">Đọc kỹ tình huống thực tế và chọn công thức Excel đúng nhất.</p>
+                </div>
+
+                <div class="mt-6">
+                    <!-- Câu hỏi 1 -->
+                    <div class="quiz-container mb-8" data-correct="B">
+                        <p class="text-lg font-bold text-gray-800 mb-4">Câu 1: Cô giáo cần đếm tổng số lượng học sinh trong danh sách (Cột A chứa Họ tên học sinh). Cô nên dùng hàm nào?</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'A')">A. =SUM(A2:A50)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'B')">B. =COUNTA(A2:A50)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'C')">C. =AVERAGE(A2:A50)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'D')">D. =MAX(A2:A50)</div>
+                        </div>
+                    </div>
+
+                    <!-- Câu hỏi 2 -->
+                    <div class="quiz-container mb-8" data-correct="A">
+                        <p class="text-lg font-bold text-gray-800 mb-4">Câu 2: Công thức: <code>=SUM(B2:B5) / COUNT(B2:B5)</code> tương đương với hàm nào dưới đây?</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'A')">A. =AVERAGE(B2:B5)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'B')">B. =MAX(B2:B5)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'C')">C. =MIN(B2:B5)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'D')">D. =COUNTIF(B2:B5)</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Câu hỏi 3 -->
+                    <div class="quiz-container mb-8" data-correct="C">
+                        <p class="text-lg font-bold text-gray-800 mb-4">Câu 3: Để tìm "Tên sản phẩm" (cột 2) dựa vào "Mã sản phẩm" trong bảng dữ liệu từ A1:D10, công thức nào đúng?</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'A')">A. =IF(A1:D10, 2)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'B')">B. =SEARCH(Mã, A1:D10, 2)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'C')">C. =VLOOKUP(Mã, A1:D10, 2, 0)</div>
+                            <div class="quiz-option p-4 rounded-xl" onclick="selectOption(this, 'D')">D. =SUM(A1:D10)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-6">
+                    <p id="game3-feedback" class="text-lg font-bold mb-4 h-6 text-red-500"></p>
+                    <button onclick="checkGame3()" class="btn-primary text-white font-bold py-2 px-8 rounded-lg shadow">Hoàn thành & Xem điểm</button>
+                </div>
+            </div>
+
+            <!-- MÀN HÌNH KẾT QUẢ -->
+            <div id="screen-result" class="screen text-center py-10">
+                <div id="result-icon" class="text-7xl mb-4">🏆</div>
+                <h2 class="text-4xl font-extrabold text-gray-800 mb-4">Tổng Kết Bài Học</h2>
+                
+                <div class="bg-gray-50 border-2 border-green-200 rounded-2xl p-8 inline-block shadow-inner mb-8">
+                    <p class="text-gray-500 text-lg mb-2">Điểm số của bạn</p>
+                    <div class="text-6xl font-black text-green-600 mb-2" id="final-score">100/100</div>
+                    <p id="result-message" class="text-xl font-bold text-gray-700">Tuyệt vời! Bạn là Bậc Thầy Excel!</p>
+                </div>
+
+                <div class="space-x-4">
+                    <button onclick="location.reload()" class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">
+                        🔄 Chơi lại từ đầu
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- QUẢN LÝ TRẠNG THÁI (STATE) ---
+        let currentScore = 0;
+        let draggedElement = null;
+        let selectedSource = null; // Dành cho chạm/click (fallback cho drag-drop)
+
+        // --- CÁC HÀM TIỆN ÍCH ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function updateScore(points) {
+            currentScore += points;
+            document.getElementById('score-display').innerText = currentScore;
+            // Hiệu ứng ăn điểm
+            const scoreDisplay = document.getElementById('score-display');
+            scoreDisplay.classList.add('text-yellow-300', 'scale-125');
+            setTimeout(() => {
+                scoreDisplay.classList.remove('text-yellow-300', 'scale-125');
+                scoreDisplay.style.transition = 'all 0.3s';
+            }, 300);
+        }
+
+        function startGame() {
+            document.getElementById('header').classList.remove('hidden');
+            setupDragAndDrop();
+            showScreen('screen-game1');
+        }
+
+        // --- LÔ-GIC GAME 1: KÉO THẢ (VÀ CLICK) ---
+        function setupDragAndDrop() {
+            const draggables = document.querySelectorAll('.draggable');
+            const dropzones = document.querySelectorAll('.dropzone');
+
+            // Hỗ trợ Kéo - Thả chuẩn (Cho máy tính)
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', () => {
+                    draggedElement = draggable;
+                    setTimeout(() => draggable.classList.add('opacity-50'), 0);
+                });
+
+                draggable.addEventListener('dragend', () => {
+                    draggable.classList.remove('opacity-50');
+                    draggedElement = null;
+                });
+
+                // Hỗ trợ click cho điện thoại/máy tính bảng
+                draggable.addEventListener('click', () => {
+                    // Reset CSS của tất cả draggable
+                    draggables.forEach(d => d.classList.remove('ring-4', 'ring-green-400', 'scale-105'));
+                    // Nếu đang trong slot rồi thì không chọn lại
+                    if(draggable.parentElement.classList.contains('slot')) return;
+                    
+                    selectedSource = draggable;
+                    draggable.classList.add('ring-4', 'ring-green-400', 'scale-105');
+                });
+            });
+
+            dropzones.forEach(zone => {
+                // Sự kiện Drag & Drop
+                zone.addEventListener('dragover', e => {
+                    e.preventDefault(); // Cho phép thả
+                    zone.classList.add('dragover');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('dragover');
+                });
+
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    zone.classList.remove('dragover');
+                    if (draggedElement) {
+                        placeElementInZone(draggedElement, zone);
+                    }
+                });
+
+                // Sự kiện click để thả (Mobile support)
+                zone.addEventListener('click', () => {
+                    if (selectedSource) {
+                        placeElementInZone(selectedSource, zone);
+                        selectedSource.classList.remove('ring-4', 'ring-green-400', 'scale-105');
+                        selectedSource = null;
+                    }
+                });
+            });
+        }
+
+        function placeElementInZone(element, zone) {
+            const slot = zone.querySelector('.slot');
+            // Nếu slot đã có phần tử, đẩy phần tử cũ về nguồn
+            if (slot.children.length > 0) {
+                const existingEl = slot.children[0];
+                document.getElementById('drag-sources').appendChild(existingEl);
+            }
+            // Thêm phần tử mới vào slot
+            slot.appendChild(element);
+            element.classList.remove('opacity-50');
+            // Đặt lại style cho vừa vặn
+            element.className = "font-bold text-center w-full h-full flex items-center justify-center rounded cursor-pointer " + 
+                element.className.split(' ').filter(c => c.startsWith('bg-') || c.startsWith('text-')).join(' ');
+        }
+
+        // --- KIỂM TRA GAME 1 ---
+        function checkGame1() {
+            const dropzones = document.querySelectorAll('.dropzone');
+            let isComplete = true;
+            let correctCount = 0;
+
+            dropzones.forEach(zone => {
+                const targetValue = zone.getAttribute('data-target');
+                const slot = zone.querySelector('.slot');
+                if (slot.children.length === 0) {
+                    isComplete = false;
+                } else {
+                    const funcValue = slot.children[0].getAttribute('data-func');
+                    if (funcValue === targetValue) {
+                        correctCount++;
+                        slot.classList.add('border-green-500', 'bg-green-100');
+                    } else {
+                        slot.classList.add('border-red-500', 'bg-red-100');
+                    }
+                }
+            });
+
+            if (!isComplete) {
+                document.getElementById('game1-feedback').innerText = "Vui lòng ghép nối tất cả các hàm trước khi đi tiếp!";
+                return;
+            }
+
+            // Tính điểm: Mỗi câu đúng 5 điểm (Tổng 25)
+            const pts = correctCount * 5;
+            updateScore(pts);
+            showScreen('screen-game2');
+        }
+
+        // --- KIỂM TRA GAME 2 ---
+        function checkGame2() {
+            const ans1 = document.getElementById('blank1').value.trim().toUpperCase();
+            const ans2 = document.getElementById('blank2').value.trim().toUpperCase();
+            const ans3 = document.getElementById('blank3').value.trim();
+
+            let correctCount = 0;
+
+            // Kiểm tra câu 1: COUNTIF
+            if (ans1 === 'COUNTIF') {
+                correctCount++;
+                document.getElementById('blank1').classList.add('correct');
+            } else {
+                document.getElementById('blank1').classList.add('wrong');
+            }
+
+            // Kiểm tra câu 2: MIN
+            if (ans2 === 'MIN') {
+                correctCount++;
+                document.getElementById('blank2').classList.add('correct');
+            } else {
+                document.getElementById('blank2').classList.add('wrong');
+            }
+
+            // Kiểm tra câu 3: Đỗ
+            if (ans3.toLowerCase() === 'đỗ' || ans3.toLowerCase() === 'do') {
+                correctCount++;
+                document.getElementById('blank3').classList.add('correct');
+            } else {
+                document.getElementById('blank3').classList.add('wrong');
+            }
+
+            // Có thể bỏ qua bắt buộc điền hết, tính điểm luôn
+            const pts = correctCount * 10; // Mỗi câu 10 điểm
+            updateScore(pts);
+            showScreen('screen-game3');
+        }
+
+        // --- LÔ-GIC GAME 3: TRẮC NGHIỆM ---
+        function selectOption(element, value) {
+            // Xóa chọn các option khác trong cùng câu hỏi
+            const container = element.closest('.quiz-container');
+            const options = container.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.classList.remove('selected');
+                opt.removeAttribute('data-selected');
+            });
+
+            // Chọn option hiện tại
+            element.classList.add('selected');
+            element.setAttribute('data-selected', value);
+        }
+
+        function checkGame3() {
+            const containers = document.querySelectorAll('.quiz-container');
+            let isComplete = true;
+            let correctCount = 0;
+
+            containers.forEach(container => {
+                const correctAns = container.getAttribute('data-correct');
+                const selectedOpt = container.querySelector('.quiz-option.selected');
+                
+                if (!selectedOpt) {
+                    isComplete = false;
+                } else {
+                    const userAns = selectedOpt.getAttribute('data-selected');
+                    if (userAns === correctAns) {
+                        correctCount++;
+                        selectedOpt.classList.add('correct-ans');
+                    } else {
+                        selectedOpt.classList.add('wrong-ans');
+                        // Highlight đáp án đúng
+                        const allOpts = container.querySelectorAll('.quiz-option');
+                        allOpts.forEach(o => {
+                            if(o.innerText.startsWith(correctAns)) o.classList.add('border-green-500', 'border-4');
+                        });
+                    }
+                }
+            });
+
+            if (!isComplete) {
+                document.getElementById('game3-feedback').innerText = "Vui lòng chọn đáp án cho tất cả các câu hỏi!";
+                return;
+            }
+
+            const pts = correctCount * 15; // Mỗi câu 15 điểm
+            updateScore(pts);
+            
+            // Xử lý hiện kết quả tổng kết
+            setTimeout(() => {
+                showResultScreen();
+            }, 500); // Đợi 0.5s để xem màu đúng/sai rồi chuyển
+        }
+
+        // --- HIỂN THỊ KẾT QUẢ ---
+        function showResultScreen() {
+            showScreen('screen-result');
+            document.getElementById('header').classList.add('hidden'); // Ẩn header
+            
+            const maxScore = 100;
+            document.getElementById('final-score').innerText = `${currentScore} / ${maxScore}`;
+            
+            const messageEl = document.getElementById('result-message');
+            const iconEl = document.getElementById('result-icon');
+
+            if (currentScore >= 90) {
+                messageEl.innerText = "Tuyệt vời! Bạn là Bậc Thầy Excel! 🌟";
+                messageEl.className = "text-xl font-bold text-green-600";
+                iconEl.innerText = "👑";
+            } else if (currentScore >= 60) {
+                messageEl.innerText = "Rất tốt! Bạn nắm vững các hàm cơ bản. 👍";
+                messageEl.className = "text-xl font-bold text-blue-600";
+                iconEl.innerText = "🎖️";
+            } else {
+                messageEl.innerText = "Cần cố gắng thêm một chút nhé! 💪";
+                messageEl.className = "text-xl font-bold text-orange-600";
+                iconEl.innerText = "📚";
+            }
+        }
+    </script>
+</body>
+</html>
